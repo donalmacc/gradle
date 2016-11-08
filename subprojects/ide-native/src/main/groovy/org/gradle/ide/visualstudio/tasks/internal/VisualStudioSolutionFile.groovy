@@ -29,9 +29,36 @@ class VisualStudioSolutionFile extends AbstractPersistableConfigurationObject {
     private final projects = [:]
     private mainProject
     private baseText
+    private visualStudioVersion = '2010'
 
     protected String getDefaultResourceName() {
-        'default.sln'
+        return 'default-' + visualStudioVersion + '.sln'
+    }
+
+    VisualStudioSolutionFile(String version) {
+        setVisualStudioVersion(version)
+    }
+
+    String getVisualStudioVersion() {
+        return visualStudioVersion
+    }
+    void setVisualStudioVersion(String version) {
+        switch(version) {
+            case '2012':
+                visualStudioVersion = '2012'
+                break
+            case '2013':
+                visualStudioVersion = '2013'
+                break
+            case '2015':
+                visualStudioVersion = '2015'
+                break
+            case '2010':
+            default:
+                visualStudioVersion = '2010'
+                break
+        }
+
     }
 
     void setMainProject(DefaultVisualStudioProject mainProject) {

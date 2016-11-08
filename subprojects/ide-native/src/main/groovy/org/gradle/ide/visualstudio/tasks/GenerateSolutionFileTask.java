@@ -71,7 +71,8 @@ public class GenerateSolutionFileTask extends GeneratorTask<VisualStudioSolution
 
     private class ConfigurationObjectGenerator extends PersistableConfigurationObjectGenerator<VisualStudioSolutionFile> {
         public VisualStudioSolutionFile create() {
-            return new VisualStudioSolutionFile();
+            DefaultVisualStudioSolution solution = (DefaultVisualStudioSolution) getSolution();
+            return new VisualStudioSolutionFile(solution.getVisualStudioVersion());
         }
 
         public void configure(final VisualStudioSolutionFile solutionFile) {

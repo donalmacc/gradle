@@ -41,6 +41,7 @@ public class DefaultVisualStudioSolution extends AbstractBuildableComponentSpec 
     private final DefaultVisualStudioProject rootProject;
     private final SolutionFile solutionFile;
     private final VisualStudioProjectResolver vsProjectResolver;
+    private String visualStudioVersion;
 
     public DefaultVisualStudioSolution(ComponentSpecIdentifier componentIdentifier, DefaultVisualStudioProject rootProject, PathToFileResolver fileResolver, VisualStudioProjectResolver vsProjectResolver, Instantiator instantiator) {
         super(componentIdentifier, VisualStudioSolution.class);
@@ -51,6 +52,14 @@ public class DefaultVisualStudioSolution extends AbstractBuildableComponentSpec 
 
     public SolutionFile getSolutionFile() {
         return solutionFile;
+    }
+
+    public String getVisualStudioVersion() {
+        return visualStudioVersion;
+    }
+
+    public void setVisualStudioVersion(String visualStudioVersion) {
+        this.visualStudioVersion = visualStudioVersion;
     }
 
     public NativeComponentSpec getComponent() {
