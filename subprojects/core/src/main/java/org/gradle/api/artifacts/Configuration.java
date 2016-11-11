@@ -18,6 +18,8 @@ package org.gradle.api.artifacts;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
+import org.gradle.api.Attribute;
+import org.gradle.api.AttributeContainer;
 import org.gradle.api.Incubating;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.specs.Spec;
@@ -163,6 +165,25 @@ public interface Configuration extends FileCollection {
      * @return this configuration
      */
     Configuration setTransitive(boolean t);
+
+    /**
+     * Returns the format of this configuration.
+     *
+     * @return the format or null if not specified.
+     * @since 3.3
+     */
+    String getFormat();
+
+    /**
+     * Sets the format of the artifacts this configuration is handling. Can be null if this configuration does not deal with a
+     * specific format.
+     *
+     * @param format the format id
+     * @return this configuration
+     * @since 3.3
+     */
+    @Incubating
+    Configuration setFormat(String format);
 
     /**
      * Returns the description for this configuration.
@@ -442,17 +463,40 @@ public interface Configuration extends FileCollection {
     @Incubating
     Configuration attribute(String key, String value);
 
+    @Incubating
+    <T> Configuration attribute(Attribute<T> key, T value);
+
     /**
      * Sets multiple configuration attributes at once. The attributes are copied from the source map.
+     * This method can be used with both a {@link Attribute proper attribute key},
+     * or with a {@link String} in which case the type of the attribute is expected to be a {@link String}.
+     * Type safety is guaranteed at runtime.
      * @param attributes the attributes to be copied to this configuration
      * @return this configuration
      */
     @Incubating
-    Configuration attributes(Map<String, String> attributes);
+    Configuration attributes(Map<?, ?> attributes);
 
+    /**
+     * Returns this configuration attributes.
+     * @return the attribute set of this configuration
+     */
     @Incubating
-    Map<String, String> getAttributes();
+    AttributeContainer getAttributes();
 
+    /**
+     * Returns the value of a configuration attribute, or <code>null</code> if not found
+     * @param key the key of the attribute
+     * @param <T> the type of the attribute
+     * @return the attribute value or <code>null</code> if not found
+     */
+    @Incubating
+    <T> T getAttribute(Attribute<T> key);
+
+    /**
+     * Tells if this configuration defines attributes.
+     * @return true if this configuration has attributes.
+     */
     @Incubating
     boolean hasAttributes();
 

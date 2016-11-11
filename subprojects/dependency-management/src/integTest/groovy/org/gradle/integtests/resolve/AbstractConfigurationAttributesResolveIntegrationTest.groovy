@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+
 package org.gradle.integtests.resolve
 
 import org.gradle.integtests.fixtures.AbstractIntegrationSpec
@@ -20,16 +22,33 @@ import org.gradle.integtests.fixtures.FluidDependenciesResolveRunner
 import org.junit.runner.RunWith
 
 @RunWith(FluidDependenciesResolveRunner)
-class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationSpec {
+abstract class AbstractConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationSpec {
+
+    abstract String getTypeDefs()
+
+    String getFreeDebug() {
+        "${free}, ${debug}"
+    }
+
+    String getFreeRelease() {
+        "${free}, ${release}"
+    }
+
+    abstract String getDebug()
+    abstract String getFree()
+    abstract String getRelease()
+    abstract String getPaid()
 
     def "selects configuration in target project which matches the configuration attributes"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -49,10 +68,10 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             project(':b') {
                 configurations {
                     foo {
-                        attributes(buildType: 'debug', flavor: 'free')
+                        attributes($freeDebug)
                     }
                     bar {
-                        attributes(buildType: 'release', flavor: 'free')
+                        attributes($freeRelease)
                     }
                 }
                 task fooJar(type: Jar) {
@@ -67,7 +86,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -87,12 +106,14 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
     def "selects configuration in target project which matches the configuration attributes when dependency is set on a parent configuration"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
                     compile
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                     _compileFreeDebug.extendsFrom compile
                     _compileFreeRelease.extendsFrom compile
                 }
@@ -112,8 +133,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':b') {
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free')
-                    bar.attributes(buildType: 'release', flavor: 'free')
+                    foo.attributes($freeDebug)
+                    bar.attributes($freeRelease)
                 }
                 task fooJar(type: Jar) {
                    baseName = 'b-foo'
@@ -127,7 +148,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -142,17 +163,20 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':b:barJar'
         notExecuted ':b:fooJar'
+
     }
 
     def "selects configuration in target project which matches the configuration attributes when dependency is set on a parent configuration and target configuration is not top-level"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
                     compile
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                     _compileFreeDebug.extendsFrom compile
                     _compileFreeRelease.extendsFrom compile
                 }
@@ -175,11 +199,11 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                     compile
                     foo {
                        extendsFrom compile
-                       attributes(buildType: 'debug', flavor: 'free')
+                       attributes($freeDebug)
                     }
                     bar {
                        extendsFrom compile
-                       attributes(buildType: 'release', flavor: 'free')
+                       attributes($freeRelease)
                     }
                 }
                 task fooJar(type: Jar) {
@@ -194,7 +218,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -209,17 +233,20 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':b:barJar'
         notExecuted ':b:fooJar'
+
     }
 
     def "explicit configuration selection should take precedence"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
                     compile
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                     _compileFreeDebug.extendsFrom compile
                     _compileFreeRelease.extendsFrom compile
                 }
@@ -242,11 +269,11 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                     compile
                     foo {
                        extendsFrom compile
-                       attributes(buildType: 'debug', flavor: 'free')
+                       attributes($freeDebug)
                     }
                     bar {
                        extendsFrom compile
-                       attributes(buildType: 'release', flavor: 'free')
+                       attributes($freeRelease)
                     }
                 }
                 task fooJar(type: Jar) {
@@ -261,7 +288,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -276,6 +303,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executed ':b:barJar'
         notExecuted ':b:fooJar'
+
     }
 
     /**
@@ -292,10 +320,12 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
     def "selects default configuration when no match is found"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -324,7 +354,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -334,20 +364,22 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
 
     }
 
-    def "selects default configuration when partial match is found"() {
+    def "chooses a configuration when partial match is found"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
                 }
                 task checkDebug(dependsOn: configurations._compileFreeDebug) {
                     doLast {
-                        assert configurations._compileFreeDebug.collect { it.name } == ['b-default.jar']
+                        assert configurations._compileFreeDebug.collect { it.name } == ['b-foo.jar']
                     }
                 }
             }
@@ -355,10 +387,10 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 configurations {
                     create 'default'
                     foo {
-                       attributes(buildType: 'debug') // partial match on `buildType`
+                       attributes($debug) // partial match on `buildType`
                     }
                     bar {
-                       attributes(flavor: 'free') // partial match on `flavor`
+                       attributes($paid) // no match on `flavor`
                     }
                 }
                 task defaultJar(type: Jar) {
@@ -377,24 +409,81 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
 
         then:
-        executedAndNotSkipped ':b:defaultJar'
-        notExecuted ':b:fooJar', ':b:barJar'
+        executedAndNotSkipped ':b:fooJar'
+        notExecuted ':b:defaultJar', ':b:barJar'
+
+    }
+
+   def "cannot choose a configuration when multiple partial matchs are found"() {
+        given:
+        file('settings.gradle') << "include 'a', 'b'"
+        buildFile << """
+            $typeDefs
+
+            project(':a') {
+                configurations {
+                    _compileFreeDebug.attributes($freeDebug)
+                }
+                dependencies {
+                    _compileFreeDebug project(':b')
+                }
+                task checkDebug(dependsOn: configurations._compileFreeDebug) {
+                    doLast {
+                        assert configurations._compileFreeDebug.collect { it.name } == []
+                    }
+                }
+            }
+            project(':b') {
+                configurations {
+                    create 'default'
+                    foo {
+                       attributes($debug) // partial match on `buildType`
+                    }
+                    bar {
+                       attributes($free) // partial match on `flavor`
+                    }
+                }
+                task defaultJar(type: Jar) {
+                   baseName = 'b-default'
+                }
+                task fooJar(type: Jar) {
+                   baseName = 'b-foo'
+                }
+                task barJar(type: Jar) {
+                   baseName = 'b-bar'
+                }
+                artifacts {
+                    'default' defaultJar
+                    foo fooJar
+                    bar barJar
+                }
+            }
+
+        """
+
+        when:
+        fails ':a:checkDebug'
+
+        then:
+        failure.assertHasCause "Cannot choose between the following configurations: [bar, foo]. All of them partially match the client attributes {buildType=debug, flavor=free}"
 
     }
 
     def "selects configuration when it has more attributes than the resolved configuration"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -408,10 +497,10 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             project(':b') {
                 configurations {
                     foo {
-                       attributes(buildType: 'debug', flavor: 'free', extra: 'extra')
+                       attributes($freeDebug, extra: 'extra')
                     }
                     bar {
-                       attributes(flavor: 'free')
+                       attributes($free)
                     }
                 }
                 task fooJar(type: Jar) {
@@ -426,7 +515,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -434,6 +523,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':b:fooJar'
         notExecuted ':b:barJar'
+
     }
 
     /**
@@ -447,10 +537,12 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
     def "should fail with reasonable error message if more than one configuration matches the attributes"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    compile.attributes(buildType: 'debug')
+                    compile.attributes($debug)
                 }
                 dependencies {
                     compile project(':b')
@@ -459,8 +551,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':b') {
                 configurations {
-                    foo.attributes(buildType: 'debug')
-                    bar.attributes(buildType: 'debug')
+                    foo.attributes($debug)
+                    bar.attributes($debug)
                 }
                 task fooJar(type: Jar) {
                    baseName = 'b-foo'
@@ -474,22 +566,25 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         fails ':a:check'
 
         then:
         failure.assertHasCause 'Cannot choose between the following configurations: [bar, foo]. All of them match the client attributes {buildType=debug}'
+
     }
 
     def "fails when multiple configurations match but have more attributes than requested"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -503,10 +598,10 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             project(':b') {
                 configurations {
                     foo {
-                       attributes(buildType: 'debug', flavor: 'free', extra: 'extra')
+                       attributes($freeDebug, extra: 'extra')
                     }
                     bar {
-                      attributes(buildType: 'debug', flavor: 'free', extra: 'extra 2')
+                      attributes($freeDebug, extra: 'extra 2')
                     }
                 }
                 task fooJar(type: Jar) {
@@ -521,13 +616,14 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         fails ':a:checkDebug'
 
         then:
         failure.assertHasCause('Cannot choose between the following configurations: [bar, foo]. All of them match the client attributes {buildType=debug, flavor=free}')
+
     }
 
     /**
@@ -552,10 +648,12 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
     def "attributes of parent configurations should not be used when matching"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    compile.attributes(p1: 'foo', p2: 'bar')
+                    compile.attributes($freeDebug)
                 }
                 dependencies {
                     compile project(':b')
@@ -564,9 +662,9 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':b') {
                 configurations {
-                    debug.attributes(p1: 'foo')
+                    debug.attributes($debug)
                     compile.extendsFrom debug
-                    compile.attributes(p2: 'bar')
+                    compile.attributes($free)
                 }
                 task fooJar(type: Jar) {
                    baseName = 'b-foo'
@@ -580,24 +678,26 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         fails ':a:check'
 
         then:
-        failure.error.contains("default")
+        failure.assertHasCause("Cannot choose between the following configurations: [compile, debug]. All of them partially match the client attributes {buildType=debug, flavor=free}")
 
     }
 
     def "transitive dependencies of selected configuration are included"() {
         given:
         file('settings.gradle') << "include 'a', 'b', 'c', 'd'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -616,8 +716,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':b') {
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free')
-                    bar.attributes(buildType: 'release', flavor: 'free')
+                    foo.attributes($freeDebug)
+                    bar.attributes($freeRelease)
                 }
                 dependencies {
                     foo project(':c')
@@ -650,7 +750,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -665,16 +765,19 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':b:barJar'
         notExecuted ':b:fooJar'
+
     }
 
     def "context travels down to transitive dependencies"() {
         given:
         file('settings.gradle') << "include 'a', 'b', 'c'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -704,8 +807,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':c') {
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free')
-                    bar.attributes(buildType: 'release', flavor: 'free')
+                    foo.attributes($freeDebug)
+                    bar.attributes($freeRelease)
                 }
                 task fooJar(type: Jar) {
                    baseName = 'c-foo'
@@ -719,7 +822,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -734,17 +837,19 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':c:barJar'
         notExecuted ':c:fooJar'
-    }
 
+    }
 
     def "context travels down to transitive dependencies with dependency substitution"() {
         given:
         file('settings.gradle') << "include 'a', 'b', 'c'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -779,8 +884,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':c') {
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free')
-                    bar.attributes(buildType: 'release', flavor: 'free')
+                    foo.attributes($freeDebug)
+                    bar.attributes($freeRelease)
                 }
                 task fooJar(type: Jar) {
                    baseName = 'c-foo'
@@ -794,7 +899,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -809,16 +914,19 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':c:barJar'
         notExecuted ':c:fooJar'
+
     }
 
     def "transitive dependencies selection uses the source configuration attributes"() {
         given:
         file('settings.gradle') << "include 'a', 'b', 'c'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -837,8 +945,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':b') {
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free', extra: 'extra') // the "extra" attribute will be used when matching ':c'
-                    bar.attributes(buildType: 'release', flavor: 'free', extra: 'extra') // the "extra" attribute will be used when matching ':c'
+                    foo.attributes($freeDebug, extra: 'extra') // the "extra" attribute will be used when matching ':c'
+                    bar.attributes($freeRelease, extra: 'extra') // the "extra" attribute will be used when matching ':c'
                 }
                 dependencies {
                     foo project(':c')
@@ -857,10 +965,10 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             }
             project(':c') {
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free', extra: 'extra')
-                    foo2.attributes(buildType: 'debug', flavor: 'free', extra: 'extra 2')
-                    bar.attributes(buildType: 'release', flavor: 'free', extra: 'extra')
-                    bar2.attributes(buildType: 'release', flavor: 'free', extra: 'extra 2')
+                    foo.attributes($freeDebug, extra: 'extra')
+                    foo2.attributes($freeDebug, extra: 'extra 2')
+                    bar.attributes($freeRelease, extra: 'extra')
+                    bar2.attributes($freeRelease, extra: 'extra 2')
                 }
                 task fooJar(type: Jar) {
                    baseName = 'c-foo'
@@ -880,7 +988,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         fails ':a:checkDebug'
@@ -899,13 +1007,15 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
     def "context travels down to transitive dependencies with external dependencies in graph"() {
         given:
         file('settings.gradle') << "include 'a', 'b', 'c'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 repositories { jcenter() }
 
                 configurations {
-                    _compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    _compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    _compileFreeDebug.attributes($freeDebug)
+                    _compileFreeRelease.attributes($freeRelease)
                 }
                 dependencies {
                     _compileFreeDebug project(':b')
@@ -937,8 +1047,8 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             project(':c') {
                 repositories { jcenter() }
                 configurations {
-                    foo.attributes(buildType: 'debug', flavor: 'free')
-                    bar.attributes(buildType: 'release', flavor: 'free')
+                    foo.attributes($freeDebug)
+                    bar.attributes($freeRelease)
                 }
                 dependencies {
                     bar 'org.apache.commons:commons-lang3:3.4'
@@ -955,7 +1065,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -970,16 +1080,19 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':c:barJar'
         notExecuted ':c:fooJar'
+
     }
 
     def "two configurations can have the same attributes but for different roles"() {
         given:
         file('settings.gradle') << "include 'a', 'b'"
-        buildFile << '''
+        buildFile << """
+            $typeDefs
+
             project(':a') {
                 configurations {
-                    compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    compileFreeDebug.attributes($freeDebug)
+                    compileFreeRelease.attributes($freeRelease)
                     compileFreeDebug.canBeConsumed = false
                     compileFreeRelease.canBeConsumed = false
                 }
@@ -1001,16 +1114,16 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
             project(':b') {
                 configurations {
                     // configurations used when resolving
-                    compileFreeDebug.attributes(buildType: 'debug', flavor: 'free')
-                    compileFreeRelease.attributes(buildType: 'release', flavor: 'free')
+                    compileFreeDebug.attributes($freeDebug)
+                    compileFreeRelease.attributes($freeRelease)
                     compileFreeDebug.canBeConsumed = false
                     compileFreeRelease.canBeConsumed = false
                     // configurations used when selecting dependencies
                     _compileFreeDebug {
-                        attributes(buildType: 'debug', flavor: 'free')
+                        attributes($freeDebug)
                     }
                     _compileFreeRelease {
-                        attributes(buildType: 'release', flavor: 'free')
+                        attributes($freeRelease)
                     }
                 }
                 task fooJar(type: Jar) {
@@ -1025,7 +1138,7 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
                 }
             }
 
-        '''
+        """
 
         when:
         run ':a:checkDebug'
@@ -1040,6 +1153,179 @@ class ConfigurationAttributesResolveIntegrationTest extends AbstractIntegrationS
         then:
         executedAndNotSkipped ':b:barJar'
         notExecuted ':b:fooJar'
+
     }
 
+    def "Library project with flavors depends on a library project that does not"() {
+        given:
+        file('settings.gradle') << "include 'a', 'b'"
+        buildFile << """
+            $typeDefs
+
+            project(':a') {
+                configurations {
+                    _compileFreeDebug.attributes($freeDebug)
+                }
+                dependencies {
+                    _compileFreeDebug project(':b')
+                }
+                task checkDebug(dependsOn: configurations._compileFreeDebug) {
+                    doLast {
+                        assert configurations._compileFreeDebug.collect { it.name } == ['b-foo.jar']
+                    }
+                }
+            }
+            project(':b') {
+                configurations {
+                    foo {
+                       attributes($debug) // partial match on `buildType`
+                    }
+                    bar {
+                       attributes($release) // no match on `buildType`
+                    }
+                }
+                task fooJar(type: Jar) {
+                   baseName = 'b-foo'
+                }
+                task barJar(type: Jar) {
+                   baseName = 'b-bar'
+                }
+                artifacts {
+                    foo fooJar
+                    bar barJar
+                }
+            }
+        """
+
+        when:
+        run ':a:checkDebug'
+
+        then:
+        executedAndNotSkipped ':b:fooJar'
+        notExecuted ':b:barJar'
+
+    }
+
+    def "Library project without flavors depends on a library project with flavors"() {
+        given:
+        file('settings.gradle') << "include 'a', 'b'"
+        buildFile << """
+            $typeDefs
+            project(':a') {
+                configurations {
+                    _compileFreeDebug.attributes($debug)
+                }
+                dependencies {
+                    _compileFreeDebug project(':b')
+                }
+                task checkDebug(dependsOn: configurations._compileFreeDebug) {
+                    doLast {
+                        assert configurations._compileFreeDebug.collect { it.name } == ['b-foo.jar']
+                    }
+                }
+            }
+            project(':b') {
+                configurations {
+                    foo {
+                       attributes($freeDebug) // match on `buildType`
+                    }
+                    bar {
+                       attributes($freeRelease) // match on `buildType`
+                    }
+                }
+                task fooJar(type: Jar) {
+                   baseName = 'b-foo'
+                }
+                task barJar(type: Jar) {
+                   baseName = 'b-bar'
+                }
+                artifacts {
+                    foo fooJar
+                    bar barJar
+                }
+            }
+        """
+
+        when:
+        run ':a:checkDebug'
+
+        then:
+        executedAndNotSkipped ':b:fooJar'
+        notExecuted ':b:barJar'
+
+    }
+
+   def "Library project with flavors depends on library project that does not which depends on library project with flavors"() {
+        given:
+        file('settings.gradle') << "include 'a', 'b', 'c'"
+        buildFile << """
+            $typeDefs
+
+            project(':a') {
+                configurations {
+                    _compileFreeDebug.attributes($freeDebug)
+                }
+                dependencies {
+                    _compileFreeDebug project(':b')
+                }
+                task checkDebug(dependsOn: configurations._compileFreeDebug) {
+                    doLast {
+                        assert configurations._compileFreeDebug.collect { it.name } == ['b-foo.jar', 'c-foo.jar']
+                    }
+                }
+            }
+            project(':b') {
+                configurations {
+                    foo {
+                       attributes($debug) // partial match on `buildType`
+                    }
+                    bar {
+                       attributes($release) // no match on `buildType`
+                    }
+                }
+                dependencies {
+                    foo project(':c')
+                    bar project(':c')
+                }
+                task fooJar(type: Jar) {
+                   baseName = 'b-foo'
+                }
+                task barJar(type: Jar) {
+                   baseName = 'b-bar'
+                }
+                artifacts {
+                    foo fooJar
+                    bar barJar
+                }
+            }
+            project(':c') {
+                configurations {
+                    foo {
+                       attributes($freeDebug) // exact match on `buildType` and `flavor`
+                    }
+                    bar {
+                       attributes(${debug}, ${paid}) // partial match on `buildType`
+                    }
+                }
+                task fooJar(type: Jar) {
+                   baseName = 'c-foo'
+                }
+                task barJar(type: Jar) {
+                   baseName = 'c-bar'
+                }
+                artifacts {
+                    foo fooJar
+                    bar barJar
+                }
+            }
+        """
+
+        when:
+        run ':a:checkDebug'
+
+        then:
+        executedAndNotSkipped ':b:fooJar', ':c:fooJar'
+        notExecuted ':b:barJar', ':c:barJar'
+
+    }
 }

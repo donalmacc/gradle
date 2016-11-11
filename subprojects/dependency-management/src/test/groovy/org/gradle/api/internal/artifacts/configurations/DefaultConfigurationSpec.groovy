@@ -16,7 +16,9 @@
 package org.gradle.api.internal.artifacts.configurations
 
 import org.gradle.api.Action
+import org.gradle.api.Attribute
 import org.gradle.api.InvalidUserDataException
+import org.gradle.api.Named
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
@@ -759,8 +761,10 @@ class DefaultConfigurationSpec extends Specification {
         assert copy.excludeRules == original.excludeRules
         assert copy.resolutionStrategy == resolutionStrategyInCopy
         assert copy.hasAttributes() == original.hasAttributes()
-        assert copy.attributes == original.attributes
-        assert !copy.attributes.is(original.attributes)
+        assert copy.attributes.empty && original.attributes.empty || !copy.attributes.is(original.attributes)
+        original.attributes.keySet().each {
+            assert copy.getAttribute(it) == original.getAttribute(it)
+        }
         assert copy.canBeResolved == original.canBeResolved
         assert copy.canBeConsumed == original.canBeConsumed
         true
@@ -1345,6 +1349,60 @@ class DefaultConfigurationSpec extends Specification {
         thrown(InvalidUserDataException)
     }
 
+    def "can define typed attributes"() {
+        def conf = conf()
+        def flavor = Attribute.of('flavor', Flavor) // give it a name and a type
+        def buildType = Attribute.of(BuildType) // infer the name from the type
+
+        when:
+        conf.attribute(flavor, Mock(Flavor) { getName() >> 'free'} )
+        conf.attribute(buildType, Mock(BuildType){ getName() >> 'release'})
+
+        then:
+        conf.hasAttributes()
+        conf.getAttribute(flavor).name == 'free'
+        conf.getAttribute(buildType).name == 'release'
+    }
+
+    def "cannot define two attributes with the same name but different types"() {
+        def conf = conf()
+        def flavor = Attribute.of(Flavor)
+
+        when:
+        conf.attribute(flavor, Mock(Flavor) { getName() >> 'free'} )
+        conf.attribute('flavor', 'paid')
+
+        then:
+        def e = thrown(IllegalArgumentException)
+        e.message == 'Cannot have two attributes with the same name but different types. This container already has an attribute named \'flavor\' of type \'org.gradle.api.internal.artifacts.configurations.DefaultConfigurationSpec$Flavor\' and you are trying to store another one of type \'java.lang.String\''
+    }
+
+    def "can overwrite a configuration attribute"() {
+        def conf = conf()
+        def flavor = Attribute.of(Flavor)
+        conf.attribute(flavor, Mock(Flavor) { getName() >> 'free'})
+
+        when:
+        conf.attribute(flavor, Mock(Flavor) { getName() >> 'paid'} )
+
+        then:
+        conf.getAttribute(flavor).name == 'paid'
+    }
+
+    def "can have two attributes with the same type but different names"() {
+        def conf = conf()
+        def targetPlatform = Attribute.of('targetPlatform', Platform)
+        def runtimePlatform = Attribute.of('runtimePlatform', Platform)
+
+        when:
+        conf.attribute(targetPlatform, Platform.JAVA6 )
+        conf.attribute(runtimePlatform, Platform.JAVA7)
+
+        then:
+        conf.getAttribute(targetPlatform) == Platform.JAVA6
+        conf.getAttribute(runtimePlatform) == Platform.JAVA7
+    }
+
     def dumpString() {
         when:
         def configurationDependency = dependency("dumpgroup1", "dumpname1", "dumpversion1");
@@ -1407,5 +1465,12 @@ All Artifacts:
             props.file,
             props.tasks ?: []
         )
+    }
+
+    interface Flavor extends Named {}
+    interface BuildType extends Named {}
+    enum Platform {
+        JAVA6,
+        JAVA7
     }
 }

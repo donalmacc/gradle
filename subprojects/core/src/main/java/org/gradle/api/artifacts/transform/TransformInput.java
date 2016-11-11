@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
-package org.gradle.testing;
+package org.gradle.api.artifacts.transform;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Verifies the correct behavior of a feature, as opposed to just a small unit of code.
- * Usually referred to as 'functional tests' in literature, but our code base has historically
- * been using the term 'integration test'.
+ * Declares the input type for a dependency transform.
  */
-public class IntegrationTest extends DistributionTest {
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE})
+public @interface TransformInput {
+    String format();
 }

@@ -34,12 +34,13 @@ public interface TaskSuccessResult extends TaskOperationResult, SuccessResult {
     boolean isUpToDate();
 
     /**
-     * Returns whether the output for this task was pulled from a cache.
+     * Returns whether the output for this task was pulled from a
+     * <a href="https://docs.gradle.org/current/userguide/task_output_cache.html">task output cache</a>.
      *
      * <p>NOTE: This will always be false if the Gradle version does
      * not support a task output cache.</p>
      *
-     * @return {@code true} if the output for this task was from a cache
+     * @return {@code true} if the output for this task was from a task output cache
      * @since 3.3
      */
     boolean isFromCache();

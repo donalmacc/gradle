@@ -14,18 +14,13 @@
  * limitations under the License.
  */
 
-package org.gradle.testing;
-
-import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.testing.Test;
-import org.gradle.internal.os.OperatingSystem;
+package org.gradle.tooling.internal.protocol.events;
 
 /**
- * Base class for all tests that check the end-to-end behavior of a Gradle distribution.
+ * DO NOT CHANGE THIS INTERFACE. It is part of the cross-version protocol.
+ *
+ * @since 3.3
  */
-public class DistributionTest extends Test {
-    @Input
-    String getOperatingSystem() {
-        return OperatingSystem.current().toString();
-    }
+public interface InternalTaskCachedResult extends InternalTaskResult {
+    boolean isFromCache();
 }

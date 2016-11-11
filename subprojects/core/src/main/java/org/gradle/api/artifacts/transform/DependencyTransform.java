@@ -14,15 +14,23 @@
  * limitations under the License.
  */
 
-package org.gradle.tooling.internal.protocol.events;
+package org.gradle.api.artifacts.transform;
 
-import org.gradle.tooling.internal.protocol.InternalProtocolInterface;
+import java.io.File;
 
 /**
- * DO NOT CHANGE THIS INTERFACE. It is part of the cross-version protocol.
- *
- * @since 3.3
+ * Base class for dependency transformations.
  */
-public interface InternalTaskCacheResult extends InternalProtocolInterface {
-    boolean isFromCache();
+public abstract class DependencyTransform {
+    private File outputDirectory;
+
+    public File getOutputDirectory() {
+        return outputDirectory;
+    }
+
+    public void setOutputDirectory(File outputDirectory) {
+        this.outputDirectory = outputDirectory;
+    }
+
+    public abstract void transform(File in);
 }

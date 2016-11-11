@@ -16,6 +16,8 @@
 package org.gradle.api.internal.artifacts.ivyservice;
 
 import com.google.common.collect.Sets;
+import com.google.common.io.Files;
+import org.gradle.api.Nullable;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.FileCollectionDependency;
@@ -25,6 +27,8 @@ import org.gradle.api.artifacts.ResolveException;
 import org.gradle.api.artifacts.ResolvedArtifact;
 import org.gradle.api.artifacts.ResolvedDependency;
 import org.gradle.api.artifacts.UnresolvedDependency;
+import org.gradle.api.artifacts.component.ComponentArtifactIdentifier;
+import org.gradle.api.artifacts.component.ComponentIdentifier;
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier;
 import org.gradle.api.artifacts.result.ResolvedArtifactResult;
 import org.gradle.api.component.Artifact;
@@ -39,6 +43,8 @@ import org.gradle.api.internal.artifacts.result.DefaultResolvedArtifactResult;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.specs.Specs;
 import org.gradle.internal.Factory;
+import org.gradle.internal.component.local.model.ComponentFileArtifactIdentifier;
+import org.gradle.internal.component.local.model.LocalFileDependencyMetadata;
 import org.gradle.internal.component.local.model.OpaqueComponentArtifactIdentifier;
 import org.gradle.internal.graph.CachingDirectedGraphWalker;
 import org.gradle.internal.graph.DirectedGraphWithEdgeValues;
@@ -48,6 +54,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -210,8 +217,8 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
         //avoid traversing the graph causing the full ResolvedDependency graph to be loaded for the most typical scenario
         if (dependencySpec == Specs.SATISFIES_ALL) {
             if (visitor.shouldVisitFiles()) {
-                for (FileCollection fileCollection : fileDependencyResults.getFiles()) {
-                    visitor.visitFiles(fileCollection);
+                for (LocalFileDependencyMetadata dependency : fileDependencyResults.getFiles()) {
+                    visitor.visitFiles(dependency.getComponentId(), dependency.getFiles());
                 }
             }
             visitor.visitArtifacts(artifactResults.getArtifacts());
@@ -219,9 +226,9 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
         }
 
         if (visitor.shouldVisitFiles()) {
-            for (Map.Entry<FileCollectionDependency, FileCollection> entry: fileDependencyResults.getFirstLevelFiles().entrySet()) {
+            for (Map.Entry<FileCollectionDependency, LocalFileDependencyMetadata> entry: fileDependencyResults.getFirstLevelFiles().entrySet()) {
                 if (dependencySpec.isSatisfiedBy(entry.getKey())) {
-                    visitor.visitFiles(entry.getValue());
+                    visitor.visitFiles(entry.getValue().getComponentId(), entry.getValue().getFiles());
                 }
             }
         }
@@ -253,7 +260,7 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
             return false;
         }
 
-        void visitFiles(FileCollection fileCollection) {
+        void visitFiles(@Nullable ComponentIdentifier componentIdentifier, FileCollection fileCollection) {
             throw new UnsupportedOperationException();
         }
     }
@@ -279,7 +286,7 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
         }
 
         @Override
-        void visitFiles(FileCollection fileCollection) {
+        void visitFiles(@Nullable ComponentIdentifier componentIdentifier, FileCollection fileCollection) {
             try {
                 for (File file : fileCollection) {
                     files.add(file);
@@ -302,6 +309,8 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
 
     private static class ResolvedArtifactCollectingVisitor extends Visitor {
         private final Collection<? super ResolvedArtifactResult> artifacts;
+        private final Set<ComponentArtifactIdentifier> seenArtifacts = new HashSet<ComponentArtifactIdentifier>();
+        private final Set<File> seenFiles = new HashSet<File>();
         private final List<Throwable> failures = new ArrayList<Throwable>();
 
         ResolvedArtifactCollectingVisitor(Collection<? super ResolvedArtifactResult> artifacts) {
@@ -312,7 +321,11 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
         void visitArtifacts(Set<ResolvedArtifact> artifacts) {
             for (ResolvedArtifact artifact : artifacts) {
                 try {
-                    this.artifacts.add(new DefaultResolvedArtifactResult(artifact.getId(), Artifact.class, artifact.getFile()));
+                    if (seenArtifacts.add(artifact.getId())) {
+                        // Trigger download of file, if required
+                        File file = artifact.getFile();
+                        this.artifacts.add(new DefaultResolvedArtifactResult(artifact.getId(), Artifact.class, artifact.getType(), file));
+                    }
                 } catch (Throwable t) {
                     failures.add(t);
                 }
@@ -325,10 +338,18 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
         }
 
         @Override
-        void visitFiles(FileCollection fileCollection) {
+        void visitFiles(@Nullable ComponentIdentifier componentIdentifier, FileCollection fileCollection) {
             try {
                 for (File file : fileCollection) {
-                    artifacts.add(new DefaultResolvedArtifactResult(new OpaqueComponentArtifactIdentifier(file.getName()), Artifact.class, file));
+                    if (seenFiles.add(file)) {
+                        ComponentArtifactIdentifier artifactIdentifier;
+                        if (componentIdentifier == null) {
+                            artifactIdentifier = new OpaqueComponentArtifactIdentifier(file);
+                        } else {
+                            artifactIdentifier = new ComponentFileArtifactIdentifier(componentIdentifier, file.getName());
+                        }
+                        artifacts.add(new DefaultResolvedArtifactResult(artifactIdentifier, Artifact.class, Files.getFileExtension(file.getName()), file));
+                    }
                 }
             } catch (Throwable t) {
                 failures.add(t);
@@ -357,7 +378,7 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
         }
 
         @Override
-        void visitFiles(FileCollection fileCollection) {
+        void visitFiles(@Nullable ComponentIdentifier componentIdentifier, FileCollection fileCollection) {
             this.files.addAll(fileCollection.getFiles());
         }
     }
@@ -390,8 +411,8 @@ public class DefaultLenientConfiguration implements LenientConfiguration, Artifa
                                   Collection<? super ResolvedDependency> connectedNodes) {
             connectedNodes.addAll(node.getChildren());
             if (artifactsVisitor.shouldVisitFiles()) {
-                for (FileCollection fileCollection : fileDependencyResults.getFiles(((DefaultResolvedDependency) node).getId())) {
-                    artifactsVisitor.visitFiles(fileCollection);
+                for (LocalFileDependencyMetadata dependencyMetadata : fileDependencyResults.getFiles(((DefaultResolvedDependency) node).getId())) {
+                    artifactsVisitor.visitFiles(dependencyMetadata.getComponentId(), dependencyMetadata.getFiles());
                 }
             }
         }
